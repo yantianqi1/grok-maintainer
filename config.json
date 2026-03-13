@@ -1,0 +1,17 @@
+{
+    "run": {
+        "count": 3
+    },
+    "email": {
+        "worker_domain": "email.xxx.space",
+        "email_domains": [
+            "xxx.space"
+        ],
+        "admin_password": "sk-xxx"
+    },
+    "api": {
+        "endpoint": "http://new-api.xxx.space:3003/v1/admin/tokens",
+        "token": "xxx",
+        "append": true
+    }
+}
