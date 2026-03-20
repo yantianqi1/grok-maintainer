@@ -6,6 +6,9 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 
 ADMIN_SESSION_KEY = "admin_username"
+DEFAULT_PAGE_NUMBER = 1
+PAGE_SIZE_OPTIONS = (20, 50, 100, 500, 1000)
+DEFAULT_PAGE_SIZE = PAGE_SIZE_OPTIONS[0]
 FILTER_OPTIONS = (
     ("all", "全部"),
     ("enabled", "启用"),
@@ -45,12 +48,19 @@ def create_admin_blueprint(store, admin_settings) -> Blueprint:
     @_login_required
     def dashboard():
         filter_name = _read_filter_name(request.args.get("filter"))
+        page_size = _read_page_size(request.args.get("page_size"))
+        key_page = store.list_api_keys_page(
+            filter_name,
+            page=_read_page_number(request.args.get("page")),
+            page_size=page_size,
+        )
         return render_template(
             "admin_dashboard.html",
             stats=store.get_dashboard_stats(),
-            keys=store.list_api_keys(filter_name),
+            key_page=key_page,
             filters=FILTER_OPTIONS,
             selected_filter=filter_name,
+            page_size_options=PAGE_SIZE_OPTIONS,
         )
 
     @blueprint.post("/admin/keys/bulk-add")
@@ -58,7 +68,11 @@ def create_admin_blueprint(store, admin_settings) -> Blueprint:
     def bulk_add_keys():
         result = store.bulk_add_api_keys(request.form.get("bulk_keys", ""))
         flash(f"新增 {result.added_count} 把 key，跳过 {result.skipped_count} 条重复项", "success")
-        return _redirect_dashboard(request.form.get("filter"))
+        return _redirect_dashboard(
+            request.form.get("filter"),
+            page=request.form.get("page"),
+            page_size=request.form.get("page_size"),
+        )
 
     @blueprint.post("/admin/keys/bulk-action")
     @_login_required
@@ -68,31 +82,55 @@ def create_admin_blueprint(store, admin_settings) -> Blueprint:
             key_ids = _read_key_ids(request.form.getlist("key_ids"))
         except ValueError:
             flash("提交的 key 参数不合法", "error")
-            return _redirect_dashboard(filter_name)
+            return _redirect_dashboard(
+                filter_name,
+                page=request.form.get("page"),
+                page_size=request.form.get("page_size"),
+            )
         if not key_ids:
             flash("请先勾选至少一把 key", "error")
-            return _redirect_dashboard(filter_name)
+            return _redirect_dashboard(
+                filter_name,
+                page=request.form.get("page"),
+                page_size=request.form.get("page_size"),
+            )
         try:
             affected_count = store.apply_bulk_action(request.form.get("action", ""), key_ids)
         except ValueError as error:
             flash(str(error), "error")
-            return _redirect_dashboard(filter_name)
+            return _redirect_dashboard(
+                filter_name,
+                page=request.form.get("page"),
+                page_size=request.form.get("page_size"),
+            )
         flash(f"批量操作完成，影响 {affected_count} 把 key", "success")
-        return _redirect_dashboard(filter_name)
+        return _redirect_dashboard(
+            filter_name,
+            page=request.form.get("page"),
+            page_size=request.form.get("page_size"),
+        )
 
     @blueprint.post("/admin/keys/<int:key_id>/toggle")
     @_login_required
     def toggle_key(key_id: int):
         store.toggle_api_key(key_id)
         flash("已更新 key 状态", "success")
-        return _redirect_dashboard(request.form.get("filter"))
+        return _redirect_dashboard(
+            request.form.get("filter"),
+            page=request.form.get("page"),
+            page_size=request.form.get("page_size"),
+        )
 
     @blueprint.post("/admin/keys/<int:key_id>/delete")
     @_login_required
     def delete_key(key_id: int):
         store.delete_api_key(key_id)
         flash("已删除 key", "success")
-        return _redirect_dashboard(request.form.get("filter"))
+        return _redirect_dashboard(
+            request.form.get("filter"),
+            page=request.form.get("page"),
+            page_size=request.form.get("page_size"),
+        )
 
     return blueprint
 
@@ -119,8 +157,37 @@ def _read_key_ids(values: list[str]) -> tuple[int, ...]:
     return tuple(normalized_ids)
 
 
-def _redirect_dashboard(filter_name: str | None):
-    return redirect(url_for("admin.dashboard", filter=_read_filter_name(filter_name)))
+def _read_page_number(value: str | None) -> int:
+    try:
+        return max(int(str(value or DEFAULT_PAGE_NUMBER).strip()), DEFAULT_PAGE_NUMBER)
+    except ValueError:
+        return DEFAULT_PAGE_NUMBER
+
+
+def _read_page_size(value: str | None) -> int:
+    try:
+        normalized = int(str(value or DEFAULT_PAGE_SIZE).strip())
+    except ValueError:
+        return DEFAULT_PAGE_SIZE
+    if normalized not in PAGE_SIZE_OPTIONS:
+        return DEFAULT_PAGE_SIZE
+    return normalized
+
+
+def _redirect_dashboard(
+    filter_name: str | None,
+    *,
+    page: str | None,
+    page_size: str | None,
+):
+    return redirect(
+        url_for(
+            "admin.dashboard",
+            filter=_read_filter_name(filter_name),
+            page=_read_page_number(page),
+            page_size=_read_page_size(page_size),
+        )
+    )
 
 
 def _login_required(view_func):

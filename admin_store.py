@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import sqlite3
 
-from admin_models import BulkAddResult, DashboardStats, ManagedApiKey
+from admin_models import BulkAddResult, DashboardStats, ManagedApiKey, ManagedApiKeyPage
 from admin_store_support import (
     FILTER_ALL,
     VALID_BULK_ACTIONS,
@@ -16,6 +16,9 @@ from admin_store_support import (
     schema_sql,
 )
 from werkzeug.security import check_password_hash, generate_password_hash
+
+
+MIN_PAGE_NUMBER = 1
 
 
 class AdminStore:
@@ -92,6 +95,33 @@ class AdminStore:
         where_clause = build_filter_clause(filter_name)
         return self._list_keys(where_clause, descending=True)
 
+    def list_api_keys_page(
+        self,
+        filter_name: str = FILTER_ALL,
+        *,
+        page: int,
+        page_size: int,
+    ) -> ManagedApiKeyPage:
+        where_clause = build_filter_clause(filter_name)
+        normalized_page_size = max(int(page_size), MIN_PAGE_NUMBER)
+        total_items = self._count_keys(where_clause)
+        total_pages = max(MIN_PAGE_NUMBER, self._calculate_total_pages(total_items, normalized_page_size))
+        normalized_page = min(max(int(page), MIN_PAGE_NUMBER), total_pages)
+        offset = (normalized_page - MIN_PAGE_NUMBER) * normalized_page_size
+        items = self._list_keys(
+            where_clause,
+            descending=True,
+            limit=normalized_page_size,
+            offset=offset,
+        )
+        return ManagedApiKeyPage(
+            items=items,
+            page=normalized_page,
+            page_size=normalized_page_size,
+            total_items=total_items,
+            total_pages=total_pages,
+        )
+
     def list_enabled_api_keys(self) -> tuple[ManagedApiKey, ...]:
         return self._list_keys("WHERE is_enabled = 1", descending=False)
 
@@ -166,7 +196,14 @@ class AdminStore:
             total_error_count=int(row["total_error_count"]),
         )
 
-    def _list_keys(self, where_clause: str, *, descending: bool) -> tuple[ManagedApiKey, ...]:
+    def _list_keys(
+        self,
+        where_clause: str,
+        *,
+        descending: bool,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> tuple[ManagedApiKey, ...]:
         order = "DESC" if descending else "ASC"
         query = f"""
             SELECT
@@ -184,9 +221,24 @@ class AdminStore:
             {where_clause}
             ORDER BY id {order}
         """
+        parameters: tuple[int, ...] = ()
+        if limit is not None:
+            query = f"{query}\nLIMIT ? OFFSET ?"
+            parameters = (limit, offset)
         with self._connect() as connection:
-            rows = connection.execute(query).fetchall()
+            rows = connection.execute(query, parameters).fetchall()
         return tuple(row_to_key(row) for row in rows)
+
+    def _count_keys(self, where_clause: str) -> int:
+        query = f"SELECT COUNT(*) AS total FROM upstream_api_keys {where_clause}"
+        with self._connect() as connection:
+            row = connection.execute(query).fetchone()
+        return int(row["total"])
+
+    def _calculate_total_pages(self, total_items: int, page_size: int) -> int:
+        if total_items == 0:
+            return MIN_PAGE_NUMBER
+        return (total_items + page_size - MIN_PAGE_NUMBER) // page_size
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._database_path)

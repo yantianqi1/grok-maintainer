@@ -28,3 +28,28 @@ class DashboardStats:
     total_keys: int
     enabled_keys: int
     total_error_count: int
+
+
+@dataclass(frozen=True)
+class ManagedApiKeyPage:
+    items: tuple[ManagedApiKey, ...]
+    page: int
+    page_size: int
+    total_items: int
+    total_pages: int
+
+    @property
+    def has_previous(self) -> bool:
+        return self.page > 1
+
+    @property
+    def has_next(self) -> bool:
+        return self.page < self.total_pages
+
+    @property
+    def previous_page(self) -> int:
+        return self.page - 1
+
+    @property
+    def next_page(self) -> int:
+        return self.page + 1

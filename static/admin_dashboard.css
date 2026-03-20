@@ -13,6 +13,9 @@
 .workspace-grid,
 .filter-row,
 .bulk-action-row,
+.table-toolbar,
+.page-size-form,
+.pagination-actions,
 .button-row,
 .action-cell,
 .stack-form {
@@ -118,6 +121,41 @@
   overflow-x: auto;
 }
 
+.table-toolbar {
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.page-size-form {
+  grid-template-columns: auto auto;
+  align-items: center;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.page-size-form select {
+  min-width: 96px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-strong);
+  color: #fbf9f3;
+  font: inherit;
+}
+
+.pagination-summary {
+  margin: 0;
+  text-align: center;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.pagination-actions {
+  grid-template-columns: repeat(2, max-content);
+  justify-content: end;
+}
+
 .key-table {
   width: 100%;
   border-collapse: collapse;
@@ -188,7 +226,8 @@
 
 @media (max-width: 1040px) {
   .workspace-grid,
-  .filter-row {
+  .filter-row,
+  .table-toolbar {
     grid-template-columns: 1fr;
   }
 
@@ -210,6 +249,12 @@
 
   .table-header {
     flex-direction: column;
+  }
+
+  .pagination-summary,
+  .pagination-actions {
+    justify-content: start;
+    text-align: left;
   }
 
   .action-cell {

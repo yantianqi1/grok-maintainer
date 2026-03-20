@@ -55,6 +55,8 @@
           </div>
           <form method="post" action="{{ url_for('admin.bulk_add_keys') }}" class="stack-form">
             <input type="hidden" name="filter" value="{{ selected_filter }}">
+            <input type="hidden" name="page" value="{{ key_page.page }}">
+            <input type="hidden" name="page_size" value="{{ key_page.page_size }}">
             <textarea
               name="bulk_keys"
               class="bulk-textarea"
@@ -71,6 +73,7 @@
             </div>
           </div>
           <form method="get" action="{{ url_for('admin.dashboard') }}" class="filter-row">
+            <input type="hidden" name="page_size" value="{{ key_page.page_size }}">
             {% for value, label in filters %}
               <button
                 type="submit"
@@ -87,6 +90,8 @@
             action="{{ url_for('admin.bulk_action') }}"
             class="bulk-action-row">
             <input type="hidden" name="filter" value="{{ selected_filter }}">
+            <input type="hidden" name="page" value="{{ key_page.page }}">
+            <input type="hidden" name="page_size" value="{{ key_page.page_size }}">
             <span class="toolbar-hint">先勾选表格中的 key，再执行批量操作。</span>
             <div class="button-row">
               <button type="submit" name="action" value="enable" class="mini-button">批量启用</button>
@@ -108,6 +113,40 @@
             <span>全选当前页</span>
           </label>
         </div>
+        <div class="table-toolbar">
+          <form method="get" action="{{ url_for('admin.dashboard') }}" class="page-size-form">
+            <input type="hidden" name="filter" value="{{ selected_filter }}">
+            <label for="page-size-select">每页显示</label>
+            <select id="page-size-select" name="page_size" onchange="this.form.submit()">
+              {% for page_size in page_size_options %}
+                <option value="{{ page_size }}" {{ 'selected' if key_page.page_size == page_size else '' }}>
+                  {{ page_size }}
+                </option>
+              {% endfor %}
+            </select>
+          </form>
+          <p class="pagination-summary">
+            共 {{ key_page.total_items }} 条，第 {{ key_page.page }} / {{ key_page.total_pages }} 页
+          </p>
+          <div class="pagination-actions">
+            <form method="get" action="{{ url_for('admin.dashboard') }}" class="inline-form">
+              <input type="hidden" name="filter" value="{{ selected_filter }}">
+              <input type="hidden" name="page_size" value="{{ key_page.page_size }}">
+              <input type="hidden" name="page" value="{{ key_page.previous_page }}">
+              <button type="submit" class="mini-button" {{ 'disabled' if not key_page.has_previous else '' }}>
+                上一页
+              </button>
+            </form>
+            <form method="get" action="{{ url_for('admin.dashboard') }}" class="inline-form">
+              <input type="hidden" name="filter" value="{{ selected_filter }}">
+              <input type="hidden" name="page_size" value="{{ key_page.page_size }}">
+              <input type="hidden" name="page" value="{{ key_page.next_page }}">
+              <button type="submit" class="mini-button" {{ 'disabled' if not key_page.has_next else '' }}>
+                下一页
+              </button>
+            </form>
+          </div>
+        </div>
         <div class="table-wrap">
           <table class="key-table">
             <thead>
@@ -125,7 +164,7 @@
               </tr>
             </thead>
             <tbody>
-              {% for key in keys %}
+              {% for key in key_page.items %}
                 <tr>
                   <td>
                     <input
@@ -150,12 +189,16 @@
                   <td class="action-cell">
                     <form method="post" action="{{ url_for('admin.toggle_key', key_id=key.id) }}" class="inline-form">
                       <input type="hidden" name="filter" value="{{ selected_filter }}">
+                      <input type="hidden" name="page" value="{{ key_page.page }}">
+                      <input type="hidden" name="page_size" value="{{ key_page.page_size }}">
                       <button type="submit" class="mini-button">
                         {{ '停用' if key.is_enabled else '启用' }}
                       </button>
                     </form>
                     <form method="post" action="{{ url_for('admin.delete_key', key_id=key.id) }}" class="inline-form">
                       <input type="hidden" name="filter" value="{{ selected_filter }}">
+                      <input type="hidden" name="page" value="{{ key_page.page }}">
+                      <input type="hidden" name="page_size" value="{{ key_page.page_size }}">
                       <button type="submit" class="mini-button mini-danger">删除</button>
                     </form>
                   </td>

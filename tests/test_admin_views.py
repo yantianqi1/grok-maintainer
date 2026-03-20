@@ -97,6 +97,23 @@ class AdminViewsTests(unittest.TestCase):
         self.assertFalse(next(item for item in final_records if item.api_key == "key-1").is_enabled)
         self.assertTrue(next(item for item in final_records if item.api_key == "key-2").is_enabled)
 
+    def test_dashboard_supports_page_and_page_size(self):
+        raw_lines = "\n".join(f"Key {index:03d},key-{index:03d}" for index in range(1, 36))
+        self.store.bulk_add_api_keys(raw_lines)
+        self.client.post("/admin/login", data={"username": "admin", "password": "secret-pass"})
+
+        response = self.client.get("/admin?page=2&page_size=20", follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('name="page_size"', html)
+        self.assertIn('value="20"', html)
+        self.assertIn("第 2 / 2 页", html)
+        self.assertIn("Key 015", html)
+        self.assertIn("Key 001", html)
+        self.assertNotIn("Key 035", html)
+        self.assertNotIn("Key 016", html)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -104,6 +104,22 @@ class AdminStoreTests(unittest.TestCase):
         self.assertFalse(next(item for item in final_records if item.api_key == "key-1").is_enabled)
         self.assertTrue(next(item for item in final_records if item.api_key == "key-2").is_enabled)
 
+    def test_list_api_keys_page_returns_slice_and_total_pages(self):
+        raw_lines = "\n".join(f"Key {index:03d},key-{index:03d}" for index in range(1, 36))
+        self.store.bulk_add_api_keys(raw_lines)
+
+        page = self.store.list_api_keys_page("all", page=2, page_size=20)
+
+        self.assertEqual(page.page, 2)
+        self.assertEqual(page.page_size, 20)
+        self.assertEqual(page.total_items, 35)
+        self.assertEqual(page.total_pages, 2)
+        self.assertEqual(len(page.items), 15)
+        self.assertEqual(page.items[0].api_key, "key-015")
+        self.assertEqual(page.items[-1].api_key, "key-001")
+        self.assertTrue(page.has_previous)
+        self.assertFalse(page.has_next)
+
 
 if __name__ == "__main__":
     unittest.main()
