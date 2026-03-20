@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>上游 Key 控制台</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin_base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin_dashboard.css') }}">
+  </head>
+  <body class="admin-shell">
+    <main class="console-shell">
+      <header class="console-header">
+        <div>
+          <p class="eyebrow">deAPI Relay Admin</p>
+          <h1>上游 Key 控制台</h1>
+          <p class="hero-copy">中文紧凑布局，集中处理密钥导入、筛选、批量操作和调用统计。</p>
+        </div>
+        <form method="post" action="{{ url_for('admin.logout') }}">
+          <button type="submit" class="ghost-button">退出登录</button>
+        </form>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-stack">
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="summary-grid">
+        <article class="summary-card">
+          <span class="summary-label">总 Key 数</span>
+          <strong class="summary-value">{{ stats.total_keys }}</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">启用中</span>
+          <strong class="summary-value">{{ stats.enabled_keys }}</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">累计错误</span>
+          <strong class="summary-value">{{ stats.total_error_count }}</strong>
+        </article>
+      </section>
+
+      <section class="workspace-grid">
+        <article class="panel">
+          <div class="panel-header compact-header">
+            <div>
+              <h2>批量添加 Key</h2>
+              <p>一行一个，或使用 <code>备注,key</code>。</p>
+            </div>
+          </div>
+          <form method="post" action="{{ url_for('admin.bulk_add_keys') }}" class="stack-form">
+            <input type="hidden" name="filter" value="{{ selected_filter }}">
+            <textarea
+              name="bulk_keys"
+              class="bulk-textarea"
+              placeholder="主力,key-1&#10;key-2&#10;备用,key-3"></textarea>
+            <button type="submit" class="primary-button">批量导入</button>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header compact-header">
+            <div>
+              <h2>筛选与批量操作</h2>
+              <p>按状态筛选后，可对当前勾选的密钥执行批量操作。</p>
+            </div>
+          </div>
+          <form method="get" action="{{ url_for('admin.dashboard') }}" class="filter-row">
+            {% for value, label in filters %}
+              <button
+                type="submit"
+                name="filter"
+                value="{{ value }}"
+                class="filter-chip {{ 'chip-active' if selected_filter == value else '' }}">
+                {{ label }}
+              </button>
+            {% endfor %}
+          </form>
+          <form
+            id="bulk-action-form"
+            method="post"
+            action="{{ url_for('admin.bulk_action') }}"
+            class="bulk-action-row">
+            <input type="hidden" name="filter" value="{{ selected_filter }}">
+            <span class="toolbar-hint">先勾选表格中的 key，再执行批量操作。</span>
+            <div class="button-row">
+              <button type="submit" name="action" value="enable" class="mini-button">批量启用</button>
+              <button type="submit" name="action" value="disable" class="mini-button">批量停用</button>
+              <button type="submit" name="action" value="delete" class="mini-button mini-danger">批量删除</button>
+            </div>
+          </form>
+        </article>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="panel-header table-header">
+          <div>
+            <h2>Key 列表</h2>
+            <p>显示启用状态、错误次数、成功次数和最近调用时间。</p>
+          </div>
+          <label class="check-all">
+            <input type="checkbox" id="select-all">
+            <span>全选当前页</span>
+          </label>
+        </div>
+        <div class="table-wrap">
+          <table class="key-table">
+            <thead>
+              <tr>
+                <th>选中</th>
+                <th>ID</th>
+                <th>备注</th>
+                <th>Key</th>
+                <th>状态</th>
+                <th>错误次数</th>
+                <th>成功次数</th>
+                <th>最近错误</th>
+                <th>最近使用</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for key in keys %}
+                <tr>
+                  <td>
+                    <input
+                      type="checkbox"
+                      name="key_ids"
+                      value="{{ key.id }}"
+                      form="bulk-action-form"
+                      class="row-checkbox">
+                  </td>
+                  <td>{{ key.id }}</td>
+                  <td>{{ key.label or '—' }}</td>
+                  <td class="mono">{{ key.api_key | mask_api_key }}</td>
+                  <td>
+                    <span class="status-pill {{ 'status-on' if key.is_enabled else 'status-off' }}">
+                      {{ '启用' if key.is_enabled else '停用' }}
+                    </span>
+                  </td>
+                  <td>{{ key.error_count }}</td>
+                  <td>{{ key.success_count }}</td>
+                  <td class="message-cell">{{ key.last_error_message or '—' }}</td>
+                  <td>{{ key.last_used_at or '—' }}</td>
+                  <td class="action-cell">
+                    <form method="post" action="{{ url_for('admin.toggle_key', key_id=key.id) }}" class="inline-form">
+                      <input type="hidden" name="filter" value="{{ selected_filter }}">
+                      <button type="submit" class="mini-button">
+                        {{ '停用' if key.is_enabled else '启用' }}
+                      </button>
+                    </form>
+                    <form method="post" action="{{ url_for('admin.delete_key', key_id=key.id) }}" class="inline-form">
+                      <input type="hidden" name="filter" value="{{ selected_filter }}">
+                      <button type="submit" class="mini-button mini-danger">删除</button>
+                    </form>
+                  </td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="10" class="empty-state">当前筛选条件下没有可显示的上游 key。</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const selectAll = document.getElementById("select-all");
+      const rowCheckboxes = document.querySelectorAll(".row-checkbox");
+      if (selectAll) {
+        selectAll.addEventListener("change", () => {
+          rowCheckboxes.forEach((checkbox) => {
+            checkbox.checked = selectAll.checked;
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

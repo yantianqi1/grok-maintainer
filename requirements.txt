@@ -1,2 +1,2 @@
-DrissionPage==4.1.0.9
-PyVirtualDisplay==3.0
+requests[socks]>=2.31.0
+Flask>=3.0.0,<4.0.0

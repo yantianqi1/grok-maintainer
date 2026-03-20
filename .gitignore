@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+
+api_keys/
+data/
+logs/
+sso/
+
+使用方案.txt

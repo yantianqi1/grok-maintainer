@@ -1,17 +1,43 @@
 {
     "run": {
-        "count": 3
+        "count": 30
     },
-    "email": {
-        "worker_domain": "email.xxx.space",
-        "email_domains": [
-            "xxx.space"
-        ],
-        "admin_password": "sk-xxx"
+    "mail": {
+        "base_url": "https://mail.chatgpt.org.uk",
+        "api_key_env": "GPTMAIL_API_KEY",
+        "timeout_sec": 120,
+        "poll_interval_sec": 3
     },
-    "api": {
-        "endpoint": "http://new-api.xxx.space:3003/v1/admin/tokens",
-        "token": "xxx",
-        "append": true
+    "deapi": {
+        "base_url": "https://deapi.ai"
+    },
+    "image_proxy": {
+        "host": "0.0.0.0",
+        "port": 8787,
+        "submit_timeout_sec": 30,
+        "poll_timeout_sec": 180,
+        "poll_interval_sec": 2,
+        "download_timeout_sec": 60,
+        "upstream_base_url": "https://api.deapi.ai",
+        "default_model": "ZImageTurbo_INT8",
+        "default_size": "768x768",
+        "upstream_key_file": "api_keys/upstream_deapi_keys.txt"
+    },
+    "admin": {
+        "database_path": "data/image_proxy.sqlite3",
+        "username": "admin",
+        "password_env": "IMAGE_PROXY_ADMIN_PASSWORD",
+        "session_secret_env": "IMAGE_PROXY_SESSION_SECRET"
+    },
+    "proxy_pool": {
+        "enabled": true,
+        "strategy": "round_robin",
+        "proxies": [
+            "gate.ipdeep.com:8082:d2533502065-dc-country-any-session-2761103000-sessiontime-5:KspkkhU4",
+            "gate.ipdeep.com:8082:d2533502065-dc-country-any-session-2761103001-sessiontime-5:KspkkhU4",
+            "gate.ipdeep.com:8082:d2533502065-dc-country-any-session-2761103002-sessiontime-5:KspkkhU4",
+            "gate.ipdeep.com:8082:d2533502065-dc-country-any-session-2761103003-sessiontime-5:KspkkhU4",
+            "gate.ipdeep.com:8082:d2533502065-dc-country-any-session-2761103004-sessiontime-5:KspkkhU4"
+        ]
     }
 }
